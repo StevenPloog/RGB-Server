@@ -1,4 +1,5 @@
 #include <SoftwareSerial.h>
+#include <stdlib.h>
 
 #define PIN_RED   3
 #define PIN_GREEN 5
@@ -93,12 +94,14 @@ void loop() {
 
     switch (message[MSG_TYPE_IDX]) {
       case MSG_POWER:
-        powered_on = message[MSG_DATA_START_IDX];
+        powered_on = atoi((const char *)(message+MSG_DATA_START_IDX));
         break;
       default: break;
     }
 
-    Serial.println(message[0]);
+    for (int i = 0; i < message_length; i++) {
+      Serial.println(message[i]);
+    }
   }
 
   // Control light power
