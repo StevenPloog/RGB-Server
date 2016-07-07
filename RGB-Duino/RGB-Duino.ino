@@ -65,7 +65,6 @@ void loop() {
   // Get incoming data 
   if (softSerial.available() > 0) {
     char c = softSerial.read();
-    //Serial.println(c, BIN);
 
     if (in_message) {
       // Save stream to current message
@@ -98,9 +97,9 @@ void loop() {
     complete_message = false;
 
     // Parse args
-    for (int i = 0; i < MAX_ARGS; i++) {
-      //message_args[1] = strtok(message+MSG_DATA_START_IDX, ",");
-
+    strcpy(message_args[0], strtok(message+MSG_DATA_START_IDX, ","));
+    for (int i = 1; i < MAX_ARGS; i++) {
+      strcpy(message_args[i], strtok(NULL, ","));
       if (message_args[i] == NULL) {
         break;
       }
@@ -108,14 +107,24 @@ void loop() {
 
     switch (message[MSG_TYPE_IDX]) {
       case MSG_POWER:
-        powered_on = atoi((const char *)(message+MSG_DATA_START_IDX));
+        powered_on = atoi(message_args[0]);
         break;
       default: break;
     }
 
+    Serial.print("MSG:");
     for (int i = 0; i < message_length; i++) {
-      Serial.println(message[i]);
+      Serial.print(message[i]);
+      //Serial.print(',');
     }
+    Serial.println();
+
+    Serial.print("ARG:");
+    for (int i = 0; i < MAX_ARGS; i++) {
+      Serial.print(message_args[i]);
+      Serial.print(',');
+    }
+    Serial.println();
   }
 
   // Control light power
