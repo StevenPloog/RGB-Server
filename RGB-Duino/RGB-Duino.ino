@@ -1,3 +1,4 @@
+#include "RGBLED.h"
 #include <SoftwareSerial.h>
 #include <stdlib.h>
 
@@ -9,16 +10,20 @@
 
 #define MSG_TIMEOUT 1000
 #define MAX_MSG_LENGTH 16
+#define MAX_ARGS 5
+#define MAX_ARG_LENGTH 32
 #define MSG_LENGTH_IDX 1
 #define MSG_TYPE_IDX  2
 #define MSG_DATA_START_IDX 3
 
-#define MSG_START 0xFF
+#define MSG_START '~'
 #define MSG_POWER 0
 
+RGBLED strip(PIN_RED, PIN_GREEN, PIN_BLUE);
 SoftwareSerial softSerial(PIN_RX, PIN_TX);
 
-unsigned char message[MAX_MSG_LENGTH];
+char message[MAX_MSG_LENGTH];
+char message_args[MAX_ARGS][MAX_ARG_LENGTH];
 int message_index;
 int message_length;
 unsigned long message_start_time;
@@ -59,7 +64,7 @@ void loop() {
   
   // Get incoming data 
   if (softSerial.available() > 0) {
-    unsigned char c = softSerial.read();
+    char c = softSerial.read();
     //Serial.println(c, BIN);
 
     if (in_message) {
@@ -92,6 +97,15 @@ void loop() {
   if (complete_message) {
     complete_message = false;
 
+    // Parse args
+    for (int i = 0; i < MAX_ARGS; i++) {
+      //message_args[1] = strtok(message+MSG_DATA_START_IDX, ",");
+
+      if (message_args[i] == NULL) {
+        break;
+      }
+    }
+
     switch (message[MSG_TYPE_IDX]) {
       case MSG_POWER:
         powered_on = atoi((const char *)(message+MSG_DATA_START_IDX));
@@ -106,12 +120,8 @@ void loop() {
 
   // Control light power
   if (powered_on) {
-    analogWrite(PIN_RED, 200);
-    analogWrite(PIN_GREEN, 150);
-    analogWrite(PIN_BLUE, 100);
+    strip.setRGB(200, 150, 100);
   } else {
-    analogWrite(PIN_RED, 0);
-    analogWrite(PIN_GREEN, 0);
-    analogWrite(PIN_BLUE, 0);
+    strip.setRGB(0, 0, 0);
   }
 }
