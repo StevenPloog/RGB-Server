@@ -9,15 +9,18 @@
 #define PIN_TX    11
 
 #define MSG_TIMEOUT 1000
-#define MAX_MSG_LENGTH 16
-#define MAX_ARGS 5
+#define MAX_MSG_LENGTH 255
+#define MAX_ARGS 16
 #define MAX_ARG_LENGTH 32
 #define MSG_LENGTH_IDX 1
-#define MSG_TYPE_IDX  2
-#define MSG_DATA_START_IDX 3
+#define MSG_ARG_IDX 2
 
 #define MSG_START '~'
 #define MSG_POWER 0
+#define MSG_RGB 1
+
+#define POWER_ARG_LEN 2
+#define RGB_ARG_LEN 4
 
 RGBLED strip(PIN_RED, PIN_GREEN, PIN_BLUE);
 SoftwareSerial softSerial(PIN_RX, PIN_TX);
@@ -97,7 +100,7 @@ void loop() {
     complete_message = false;
 
     // Parse args
-    strcpy(message_args[0], strtok(message+MSG_DATA_START_IDX, ","));
+    strcpy(message_args[0], strtok(message+MSG_ARG_IDX, ","));
     for (int i = 1; i < MAX_ARGS; i++) {
       strcpy(message_args[i], strtok(NULL, ","));
       if (message_args[i] == NULL) {
@@ -105,17 +108,31 @@ void loop() {
       }
     }
 
-    switch (message[MSG_TYPE_IDX]) {
-      case MSG_POWER:
-        powered_on = atoi(message_args[0]);
-        break;
-      default: break;
+    int arg_idx = 1;
+    char (*args)[MAX_ARG_LENGTH];
+    for (int i = 0; i < atoi(message_args[0]); i++) {
+      args = &(message_args[arg_idx]);
+      
+      switch (atoi(args[0])) {
+        case MSG_POWER:
+          powered_on = atoi(args[1]);
+          if (powered_on) strip.setRGB(200, 150, 100);
+          else strip.setRGB(0, 0, 0);
+          arg_idx += POWER_ARG_LEN;
+          break;
+          
+        case MSG_RGB:
+          strip.setRGB(atoi(args[1]), atoi(args[2]), atoi(args[3]));
+          arg_idx += RGB_ARG_LEN;
+          break;
+        default: break;
+      }
     }
 
     Serial.print("MSG:");
     for (int i = 0; i < message_length; i++) {
       Serial.print(message[i]);
-      //Serial.print(',');
+      Serial.print(',');
     }
     Serial.println();
 
@@ -125,12 +142,5 @@ void loop() {
       Serial.print(',');
     }
     Serial.println();
-  }
-
-  // Control light power
-  if (powered_on) {
-    strip.setRGB(200, 150, 100);
-  } else {
-    strip.setRGB(0, 0, 0);
   }
 }
