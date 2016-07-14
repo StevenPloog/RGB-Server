@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>RGB Control Panel</title>
+        <link href='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/base/jquery-ui.css' rel=stylesheet />
+        <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js'></script>
+        <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js'></script>
+        <script src='//cdn.jsdelivr.net/jquery.cookie/1.4.1/jquery.cookie.min.js'></script>
+        <style>
+            body {
+                background-color: #002058;
+                font-family: sans-serif;
+                text-align: center;
+            }
+            h1 {
+                color: #E87722;
+                font-size: 24px;
+                text-align: center;
+            }
+            div {
+                display: inline-block;
+                width: 60%;
+            }
+            button {
+                background-color: #002058;
+                border-color: #E87722;
+                color: #E87722;
+                font-size: 24px;
+                text-align: middle;
+                margin: 4px;
+                line-height: 1.5;
+            }
+            button:hover {
+                background-color: #606EB2;
+                border-color: #606EB2;
+            }
+            @media screen and (min-width: 1024px) {
+                button {
+                    width: 35%;
+                }
+            }
+            @media screen and (max-width: 1023px) {
+                button {
+                    height: 100px;
+                    width: 100%;
+                }
+            }
+        </style>
+        <meta id='meta' name='viewport' content='height=device-height, initial-scale=1.0' />
+        <script>
+            var csrftoken = $.cookie('csrftoken');
+            function csrfSafeMethod(method) {
+                // these HTTP methods do not require CSRF protection
+                return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+            }
+            $.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                    }
+                }
+            });
+            $(document).ready(function() {
+                $('#routine_div>button').click(function(event){
+                    $.post('{% url "rgb:web_input" %}', {type: 'saved', uuid: event.target.value});
+                }),
+                $('#rgb_picker_div>button').click(function(event){
+                    $.post('{% url "rgb:web_input" %}', {type: 'rgb', rgb: $('#rgb_picker').val()});
+                }),
+                $('#fade_picker_div>button').click(function(event){
+                    $.post('{% url "rgb:web_input" %}', 
+                        {
+                            type: 'rgb_fade', 
+                            rgb1: $('#fade_picker1').val(),
+                            rgb2: $('#fade_picker2').val(),
+                            time: $('#fade_picker_time').val()
+                        }
+                    );
+                })
+            });
+        </script>
+    </head>
+    <body>
+        <div id='routine_div'>
+            {% for routine in routines %}
+            {% if routine.category == "power" %}<button value='{{routine.uuid}}'>{{routine.name}}</button>{% endif %}
+            {% endfor %}
+            {% for routine in routines %}
+            {% if routine.category != "power" %}<button value='{{routine.uuid}}'>{{routine.name}}</button>{% endif %}
+            {% endfor %}
+        </div>
+        <br><br>
+        <div id='rgb_picker_div'>
+            <input type='color' value='#0000FF' id='rgb_picker'></input>
+            <button id='rgb_picker_button'>Send Color</button>
+        </div>
+        <br><br>
+        <div id='fade_picker_div'>
+            <input type='color' value='#0000FF' id='fade_picker1'></input>
+            <input type='color' value='#FF0000' id='fade_picker2'></input>
+            <input type='number' value='1000' id='fade_picker_time'></input>
+            <button id='fade_picker_button'>Send Fade</button>
+        </div>
+    </body>
+</html>
