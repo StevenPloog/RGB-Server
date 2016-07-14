@@ -5,130 +5,173 @@
 
 // Constructor for the led
 // Pins passed to this constructor must implement Arduino's analogWrite method
-RGBLED::RGBLED(float redPin, float greenPin, float bluePin) {
-    _redPin = redPin;
-    _greenPin = greenPin;
-    _bluePin = bluePin;
+RGBLED::RGBLED(float _redPin, float _greenPin, float _bluePin) {
+    redPin = _redPin;
+    greenPin = _greenPin;
+    bluePin = _bluePin;
 
-    pinMode(_redPin, OUTPUT);
-    pinMode(_greenPin, OUTPUT);
-    pinMode(_bluePin, OUTPUT);
+    current_state = STATE_POWEROFF;
+    power_state = STATE_POWEROFF;
+    last_tick_millis = millis();
+
+    fade_current_color = 0;
+    fade_time = 1000;
+    fade_init = true;
+
+    pinMode(redPin, OUTPUT);
+    pinMode(greenPin, OUTPUT);
+    pinMode(bluePin, OUTPUT);
 
     setRGB(0.0, 0.0, 0.0);
 }
 
-// Fade the red, green and blue values
-void RGBLED::fadeRGB(float r, float g, float b) {
-    while (_red != r || _green != g || _blue != b) {
-        if (_red < r)        { setRed(_red+1.0); }
-        else if (_red > r)   { setRed(_red-1.0); }
+void RGBLED::tick() {
+    unsigned long current_millis = millis();
+    long num_millis;
 
-        if (_green < g)      { setGreen(_green+1.0); }
-        else if (_green > g) { setGreen(_green-1.0); }
+    // Handle current state, power states are handled after switch
+    switch (current_state) {
+        case STATE_RGB:
+            break;
+        case STATE_FADE:
+            // Setup to begin fading
+            if (fade_init) {
+                setRGB(0, 0, 0);
+                fade_last_millis = current_millis;
+                fade_init = false;
+            }
 
-        if (_blue < b)       { setBlue(_blue+1.0); }
-        else if (_blue > b)  { setBlue(_blue-1.0); }
+            num_millis = (long)(current_millis - fade_last_millis);
+            //Serial.println(num_millis);
+            if (num_millis > 0) {
+                setRGB( red+(num_millis * fade_step[fade_current_color][0]),
+                        green+(num_millis * fade_step[fade_current_color][1]),
+                        blue+(num_millis * fade_step[fade_current_color][2])
+                );
 
-        delay(RGBLED_FADE_DELAY);
+                if (red >= fade_rgb[fade_current_color][0] && green >= fade_rgb[fade_current_color][1] && blue >= fade_rgb[fade_current_color][2]) {
+                    fade_step[fade_current_color][0] *= -1.0;
+                    fade_step[fade_current_color][1] *= -1.0;
+                    fade_step[fade_current_color][2] *= -1.0;
+                } else if (red <= 0.0 && green <= 0.0 && blue <= 0.0) {
+                    fade_step[fade_current_color][0] *= -1.0;
+                    fade_step[fade_current_color][1] *= -1.0;
+                    fade_step[fade_current_color][2] *= -1.0;
+                    if (fade_current_color == 0) fade_current_color = 1;
+                    else fade_current_color = 0;
+                }
+                fade_last_millis = current_millis;
+            }
+            break;
+        default: break;
     }
+
+    // Handle power states
+    if (power_state == STATE_POWERON)
+        rgbOut();
+    else
+        rgbOff();
+
+    last_tick_millis = millis();
 }
 
-// Fade the red value
-void RGBLED::fadeRed(float r) {
-    while (_red != r) {
-        if (_red < r)   { setRed(_red+1.0); }
-        else            { setRed(_red-1.0); }
-
-        delay(RGBLED_FADE_DELAY);
-    }
+void RGBLED::setFadeTime(unsigned long millis) {
+    fade_time = millis;
+    setFadeSteps(0);
+    setFadeSteps(1);
 }
 
-// Fade the green value
-void RGBLED::fadeGreen(float g) {
-    while (_green != g) {
-        if (_green < g) { setGreen(_green+1.0); }
-        else            { setGreen(_green-1.0); }
+void RGBLED::setFadeSteps(int fadeColor) {
+    float half_time = (float)fade_time / 2.0;
+    fade_step[fadeColor][0] = fade_rgb[fadeColor][0] / half_time;
+    fade_step[fadeColor][1] = fade_rgb[fadeColor][1] / half_time;
+    fade_step[fadeColor][2] = fade_rgb[fadeColor][2] / half_time;
 
-        delay(RGBLED_FADE_DELAY);
-    }
+    fade_init = true;
 }
 
-// Fade the blue value
-void RGBLED::fadeBlue(float b) {
-    while (_blue != b) {
-        if (_blue < b)  { setBlue(_blue+1.0); }
-        else            { setBlue(_blue-1.0); }
-
-        delay(RGBLED_FADE_DELAY);
-    }
-}
-
-// Set the red, green and blue values
-void RGBLED::setRGB(float r, float g, float b) {
-    _red = r;
-    _green = g;
-    _blue = b;
-
-    analogWrite(_redPin,  (int) _red);
-    analogWrite(_greenPin,(int) _green);
-    analogWrite(_bluePin, (int) _blue);
-}
-
-// Set the red value
-void RGBLED::setRed(float r) {
-    _red = r;
-    analogWrite(_redPin, (int) _red);
-}
-
-// Set the green value
-void RGBLED::setGreen(float g) {
-    _green = g;
-    analogWrite(_greenPin, (int) _green);
-}
-
-// Set the blue value
-void RGBLED::setBlue(float b) {
-    _blue = b;
-    analogWrite(_bluePin, (int) _blue);
+void RGBLED::setFadeColor(int fadeColor, float r, float g, float b) {
+    fade_rgb[fadeColor][0] = boundcheck(r);
+    fade_rgb[fadeColor][1] = boundcheck(g);
+    fade_rgb[fadeColor][2] = boundcheck(b);
+    setFadeSteps(fadeColor);
 }
 
 // Step toward rgb value
 void RGBLED::stepToRGB(float r, float g, float b, float stepSize) {
-  if (_red < r) {
-    _red += stepSize;
-    if (_red > r) { _red = r; }
-  } else if (_red > r) {
-    _red -= stepSize;
-    if (_red < r) { _red = r; }
-  }
-  setRed(_red);
-  
-  if (_green < g) {
-    _green += stepSize;
-    if (_green > g) { _green = g; }
-  } else if (_green > g) {
-    _green -= stepSize;
-    if (_green < g) { _green = g; }
-  }
-  setGreen(_green);
-  
-  if (_blue < b) {
-    _blue += stepSize;
-    if (_blue > b) { _blue = b; }
-  } else if (_blue > b) {
-    _blue -= stepSize;
-    if (_blue < b) { _blue = b; }
-  }
-  setBlue(_blue);
+    if (red < r) {
+        red += stepSize;
+        if (red > r) { red = r; }
+    } else if (red > r) {
+        red -= stepSize;
+        if (red < r) { red = r; }
+    }
+    setRed(red);
+
+    if (green < g) {
+        green += stepSize;
+        if (green > g) { green = g; }
+    } else if (green > g) {
+        green -= stepSize;
+        if (green < g) { green = g; }
+    }
+    setGreen(green);
+
+    if (blue < b) {
+        blue += stepSize;
+        if (blue > b) { blue = b; }
+    } else if (blue > b) {
+        blue -= stepSize;
+        if (blue < b) { blue = b; }
+    }
+    setBlue(blue);
 }
 
 // Step toward rgb value
 void RGBLED::stepToRGB(float r, float g, float b) {
-  stepToRGB(r, g, b, 1.0);
+    stepToRGB(r, g, b, 1.0);
 }
 
-// Getter methods for rgb values
-float RGBLED::red()   { return _red;   }
-float RGBLED::green() { return _green; }
-float RGBLED::blue()  { return _blue;  }
+void RGBLED::setState(int state) {
+    current_state = state;
+}
 
+void RGBLED::powerOn() {
+    power_state = STATE_POWERON;
+}
+
+void RGBLED::powerOff() {
+    power_state = STATE_POWEROFF;
+}
+
+void RGBLED::rgbOut() {
+    analogWrite(redPin,  (int) red);
+    analogWrite(greenPin,(int) green);
+    analogWrite(bluePin, (int) blue);
+}
+
+void RGBLED::rgbOff() {
+    analogWrite(redPin,   0);
+    analogWrite(greenPin, 0);
+    analogWrite(bluePin,  0);
+}
+
+// Getters and setters for red, green, blue
+float RGBLED::getRed   () { return red;   }
+float RGBLED::getGreen () { return green; }
+float RGBLED::getBlue  () { return blue;  }
+void  RGBLED::setRed   (float r) { red   = boundcheck(r); }
+void  RGBLED::setGreen (float g) { green = boundcheck(g); }
+void  RGBLED::setBlue  (float b) { blue  = boundcheck(b); }
+
+void  RGBLED::setRGB(float r, float g, float b) {
+    red = boundcheck(r);
+    green = boundcheck(g);
+    blue = boundcheck(b);
+}
+
+inline float RGBLED::boundcheck(float x) {
+    if (x > 255.0) return 255.0;
+    if (x < 0.0) return 0.0;
+    return x;
+}
