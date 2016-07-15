@@ -2,11 +2,11 @@
 #include <SoftwareSerial.h>
 #include <stdlib.h>
 
-#define PIN_RED   3
-#define PIN_GREEN 5
-#define PIN_BLUE  6
-#define PIN_RX    10
-#define PIN_TX    11
+#define PIN_RED   9
+#define PIN_GREEN 10
+#define PIN_BLUE  11
+#define PIN_RX    7
+#define PIN_TX    6
 
 #define MSG_TIMEOUT     1000
 #define MAX_MSG_LENGTH  255
