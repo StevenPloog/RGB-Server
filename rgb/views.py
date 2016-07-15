@@ -10,9 +10,6 @@ def index(request):
     routines = Routine.objects.all()
     return render(request, 'rgb/rgb.html', {'routines':routines})
 
-def extras(request):
-    return HttpResponse("Hello, world. You're at the polls index.")
-
 # Handle button clicks
 def web_input(request):
     if request.POST['type'] == 'saved':
