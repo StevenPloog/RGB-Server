@@ -124,26 +124,22 @@ void loop() {
                     break;
 
                 case MSG_RGB:
-                    strip.setRGB(atoi(args[1]), atoi(args[2]), atoi(args[3]));
-                    strip.setState(STATE_RGB);
+                    strip.setSolidColor(atoi(args[1]), atoi(args[2]), atoi(args[3]));
                     arg_idx += RGB_ARG_LEN;
                     break;
 
                 case MSG_FADE_TIME:
                     strip.setFadeTime(atoi(args[1]));
-                    strip.setState(STATE_FADE);
                     arg_idx += FADE_TIME_LEN;
                     break;
 
                 case MSG_FADE_COLOR1:
                     strip.setFadeColor(0, atoi(args[1]), atoi(args[2]), atoi(args[3]));
-                    strip.setState(STATE_FADE);
                     arg_idx += FADE_COLOR1_LEN;
                     break;
 
                 case MSG_FADE_COLOR2:
                     strip.setFadeColor(1, atoi(args[1]), atoi(args[2]), atoi(args[3]));
-                    strip.setState(STATE_FADE);
                     arg_idx += FADE_COLOR2_LEN;
                     break;
 
