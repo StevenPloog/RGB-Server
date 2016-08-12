@@ -28,6 +28,7 @@ class RGBLED {
         void setGreen(float g);
         void setBlue(float b);
 
+        void startFade();
         void setFadeColor(int fadeColor, float r, float g, float b);
         void setFadeTime(unsigned long millis);
 

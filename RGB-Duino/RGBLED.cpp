@@ -37,7 +37,7 @@ void RGBLED::tick() {
             case SOLID_COLOR:   break;
             case FADE:          break;
             case FADE_IN:       fadeIn(current_fade_color,  false); break;
-            case FADE_OUT:      fadeOut(current_fade_color, false); break;
+            case FADE_OUT:      fadeOut(current_fade_color, power_off_after_fade); break;
             default: break;
         }
         current_state = next_state;
@@ -92,6 +92,15 @@ void RGBLED::nextFadeColor() {
     }
 }
 
+void RGBLED::startFade() {
+    if (current_state != POWER_OFF && current_state != POWERING_OFF) {
+        next_state = FADE_IN;
+        current_state = FADE_IN;
+    } else {
+        powered_on_state = FADE_IN;
+    }
+}
+
 void RGBLED::fadeIn(int fadeColor, bool to_solid) {
     if (to_solid) {
         fade(fadeColor, DIRECTION_UP, SOLID_COLOR);
@@ -137,6 +146,7 @@ void RGBLED::fade(int fadeColor, int direction, int to_state) {
             nextFadeColor();
             next_state = to_state;
             current_state = to_state;
+            power_off_after_fade = false;
         }
     }
 }
@@ -201,7 +211,7 @@ void RGBLED::powerOff() {
     } else {
         power_off_after_fade = true;
         next_state = FADE_OUT;
-        powered_on_state = FADE;
+        powered_on_state = FADE_IN;
     }
 
     fade_last_millis = millis();
