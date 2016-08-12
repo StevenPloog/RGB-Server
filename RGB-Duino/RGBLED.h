@@ -19,21 +19,11 @@ class RGBLED {
 
         void tick();
 
-        int getState();
-        void setState(int state);
-
         void setSolidColor(float r, float g, float b);
-        void setRGB(float r, float g, float b);
-        void setRed(float r);
-        void setGreen(float g);
-        void setBlue(float b);
 
         void startFade();
         void setFadeColor(int fadeColor, float r, float g, float b);
         void setFadeTime(unsigned long millis);
-
-        void stepToRGB(float r, float g, float b, float stepSize);
-        void stepToRGB(float r, float g, float b);
 
         void powerOn();
         void powerOff();
@@ -50,19 +40,21 @@ class RGBLED {
         void fadeOut(int fadeColor, bool to_off);
         void fade(int fadeColor, int direction, int to_state);
         void nextFadeColor();
-        void poweringOff();
-        void poweringOn();
         void rgbOut();
         void rgbOff();
         void setFadeSteps(int fadeColor);
+        void setRGB(float r, float g, float b);
+        void setRed(float r);
+        void setGreen(float g);
+        void setBlue(float b);
+        void stepToRGB(float r, float g, float b, float stepSize);
+        void stepToRGB(float r, float g, float b);
 
         int current_state;
-        int next_state;
         int powered_on_state;
         unsigned long last_tick_millis;
 
         bool power_off_after_fade;
-        bool fade_init;
         int current_fade_color;
         unsigned long fade_time;
         unsigned long fade_last_millis;
