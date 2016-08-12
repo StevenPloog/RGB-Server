@@ -9,6 +9,9 @@
 #define FADE_IN         5
 #define FADE_OUT        6
 
+#define DIRECTION_UP    1
+#define DIRECTION_DOWN -1
+
 class RGBLED {
     public:
         //RGBLED();
@@ -16,6 +19,7 @@ class RGBLED {
 
         void tick();
 
+        int getState();
         void setState(int state);
 
         void setSolidColor(float r, float g, float b);
@@ -39,6 +43,12 @@ class RGBLED {
 
     private:
         inline float boundcheck(float x);
+        inline float lowerbound(float x, float bound);
+        inline float upperbound(float x, float bound);
+        void fadeIn(int fadeColor, bool to_solid);
+        void fadeOut(int fadeColor, bool to_off);
+        void fade(int fadeColor, int direction, int to_state);
+        void nextFadeColor();
         void poweringOff();
         void poweringOn();
         void rgbOut();
@@ -52,7 +62,7 @@ class RGBLED {
 
         bool power_off_after_fade;
         bool fade_init;
-        int fade_current_color;
+        int current_fade_color;
         unsigned long fade_time;
         unsigned long fade_last_millis;
         float fade_rgb[2][3];

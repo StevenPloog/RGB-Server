@@ -162,5 +162,11 @@ void loop() {
         Serial.println();
     }
 
+    // char c = strip.getState() + '0';
+    // Serial.print("State: ");
+    // Serial.print(c);
     strip.tick();
+    // Serial.print(" NextState: ");
+    // c = strip.getState() + '0';
+    // Serial.println(c);
 }
