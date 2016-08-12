@@ -10,71 +10,101 @@ RGBLED::RGBLED(float _redPin, float _greenPin, float _bluePin) {
     greenPin = _greenPin;
     bluePin = _bluePin;
 
-    current_state = STATE_POWEROFF;
-    power_state = STATE_POWEROFF;
-    last_tick_millis = millis();
-
-    fade_current_color = 0;
-    fade_time = 1000;
-    fade_init = true;
-
     pinMode(redPin, OUTPUT);
     pinMode(greenPin, OUTPUT);
     pinMode(bluePin, OUTPUT);
 
+    current_state = POWER_OFF;
+    current_fade_color = POWER_OFF;
+    powered_on_state = FADE_IN;
+
+    current_fade_color = 0;
+    setFadeColor(0, 0.0, 0.0, 128.0);
+    setFadeColor(1, 128.0, 0.0, 116.0);
+    setFadeTime(3000);
+
     setRGB(0.0, 0.0, 0.0);
+
+    last_tick_millis = millis();
 }
 
 void RGBLED::tick() {
-    unsigned long current_millis = millis();
-    long num_millis;
-
     // Handle current state, power states are handled after switch
-    if (power_state == STATE_POWERON) {
+    if (current_state != POWER_OFF) {
         switch (current_state) {
-            case STATE_RGB:
-                break;
-            case STATE_FADE:
-                // Setup to begin fading
-                if (fade_init) {
-                    setRGB(0, 0, 0);
-                    fade_last_millis = current_millis;
-                    fade_init = false;
-                }
-
-                num_millis = (long)(current_millis - fade_last_millis);
-
-                if (num_millis > 0) {
-                    setRGB( red+(num_millis * fade_step[fade_current_color][0]),
-                            green+(num_millis * fade_step[fade_current_color][1]),
-                            blue+(num_millis * fade_step[fade_current_color][2])
-                    );
-
-                    if (red >= fade_rgb[fade_current_color][0] && green >= fade_rgb[fade_current_color][1] && blue >= fade_rgb[fade_current_color][2]) {
-                        fade_step[fade_current_color][0] *= -1.0;
-                        fade_step[fade_current_color][1] *= -1.0;
-                        fade_step[fade_current_color][2] *= -1.0;
-                    } else if (red <= 0.0 && green <= 0.0 && blue <= 0.0) {
-                        fade_step[fade_current_color][0] *= -1.0;
-                        fade_step[fade_current_color][1] *= -1.0;
-                        fade_step[fade_current_color][2] *= -1.0;
-                        if (fade_current_color == 0) fade_current_color = 1;
-                        else fade_current_color = 0;
-                    }
-                    fade_last_millis = current_millis;
-                }
-                break;
+            case POWERING_OFF:  fadeOut(current_fade_color, true); break;
+            case POWERING_ON:   fadeIn(current_fade_color,  true); break;
+            case SOLID_COLOR:   break;
+            case FADE:          break;
+            case FADE_IN:       fadeIn(current_fade_color,  false); break;
+            case FADE_OUT:      fadeOut(current_fade_color, power_off_after_fade); break;
             default: break;
         }
+        rgbOut();
+    } else {
+        rgbOff();
     }
 
-    // Handle power states
-    if (power_state == STATE_POWERON)
-        rgbOut();
-    else
-        rgbOff();
-
     last_tick_millis = millis();
+}
+
+void RGBLED::powerOn() {
+    // Don't POWER_ON again if we are already on
+    if (current_state != POWER_OFF && current_state != POWERING_OFF) return;
+
+    // Fade the light on
+    if (powered_on_state == SOLID_COLOR) {
+        current_fade_color = 0;
+        setRGB(0, 0, 0);
+        setFadeColor(current_fade_color, pRed, pGreen, pBlue);
+        setFadeTime(1500);
+        current_state = POWERING_ON;
+    } else {
+        current_state = FADE_IN;
+    }
+
+    fade_last_millis = millis();
+}
+
+void RGBLED::powerOff() {
+    // Don't POWER_OFF again if we are already off
+    if (current_state == POWER_OFF || current_state == POWERING_OFF) return;
+
+    if (current_state == SOLID_COLOR) {
+        pRed   = red;
+        pGreen = green;
+        pBlue  = blue;
+        current_fade_color = 0;
+        setFadeColor(current_fade_color, red, green, blue);
+        setFadeTime(1500);
+        current_state = POWERING_OFF;
+        powered_on_state = SOLID_COLOR;
+    } else {
+        power_off_after_fade = true;
+        powered_on_state = FADE_IN;
+    }
+
+    fade_last_millis = millis();
+}
+
+void RGBLED::setSolidColor(float r, float g, float b) {
+    powered_on_state = SOLID_COLOR;
+    pRed    = boundcheck(r);
+    pGreen  = boundcheck(g);
+    pBlue   = boundcheck(b);
+
+    if (current_state != POWER_OFF && current_state != POWERING_OFF) {
+        current_state = SOLID_COLOR;
+        setRGB(pRed, pGreen, pBlue);
+    }
+}
+
+void RGBLED::startFade() {
+    if (current_state != POWER_OFF && current_state != POWERING_OFF) {
+        current_state = FADE_IN;
+    } else {
+        powered_on_state = FADE_IN;
+    }
 }
 
 void RGBLED::setFadeTime(unsigned long millis) {
@@ -83,13 +113,57 @@ void RGBLED::setFadeTime(unsigned long millis) {
     setFadeSteps(1);
 }
 
+void RGBLED::fadeIn(int fadeColor, bool to_solid) {
+    if (to_solid) {
+        fade(fadeColor, DIRECTION_UP, SOLID_COLOR);
+    } else {
+        fade(fadeColor, DIRECTION_UP, FADE_OUT);
+    }
+}
+
+void RGBLED::fadeOut(int fadeColor, bool to_off) {
+    if (to_off) {
+        fade(fadeColor, DIRECTION_DOWN, POWER_OFF);
+    } else {
+        fade(fadeColor, DIRECTION_DOWN, FADE_IN);
+    }
+}
+
+void RGBLED::fade(int fadeColor, int direction, int to_state) {
+    long num_millis = (long)(millis() - fade_last_millis);
+    fade_last_millis = millis();
+
+    if (num_millis > 0) {
+        setRGB( red  +((float)direction * num_millis * fade_step[fadeColor][0]),
+                green+((float)direction * num_millis * fade_step[fadeColor][1]),
+                blue +((float)direction * num_millis * fade_step[fadeColor][2])
+        );
+    }
+
+    if (direction == DIRECTION_UP) {
+        red   = upperbound(red,   fade_rgb[fadeColor][0]);
+        green = upperbound(green, fade_rgb[fadeColor][1]);
+        blue  = upperbound(blue,  fade_rgb[fadeColor][2]);
+        if (red == fade_rgb[fadeColor][0] && green == fade_rgb[fadeColor][1] && blue == fade_rgb[fadeColor][2]) {
+            current_state = to_state;
+        }
+    } else {
+        red   = lowerbound(red,   0.0);
+        green = lowerbound(green, 0.0);
+        blue  = lowerbound(blue,  0.0);
+        if (red == 0.0 && green == 0.0 && blue == 0.0) {
+            nextFadeColor();
+            current_state = to_state;
+            power_off_after_fade = false;
+        }
+    }
+}
+
 void RGBLED::setFadeSteps(int fadeColor) {
     float half_time = (float)fade_time / 2.0;
     fade_step[fadeColor][0] = fade_rgb[fadeColor][0] / half_time;
     fade_step[fadeColor][1] = fade_rgb[fadeColor][1] / half_time;
     fade_step[fadeColor][2] = fade_rgb[fadeColor][2] / half_time;
-
-    fade_init = true;
 }
 
 void RGBLED::setFadeColor(int fadeColor, float r, float g, float b) {
@@ -97,6 +171,19 @@ void RGBLED::setFadeColor(int fadeColor, float r, float g, float b) {
     fade_rgb[fadeColor][1] = boundcheck(g);
     fade_rgb[fadeColor][2] = boundcheck(b);
     setFadeSteps(fadeColor);
+}
+
+void RGBLED::nextFadeColor() {
+    switch (current_fade_color) {
+        case 0:     current_fade_color = 1; break;
+        case 1:     current_fade_color = 0; break;
+        default:    current_fade_color = 0; break;
+    }
+}
+
+// Step toward rgb value
+void RGBLED::stepToRGB(float r, float g, float b) {
+    stepToRGB(r, g, b, 1.0);
 }
 
 // Step toward rgb value
@@ -107,60 +194,6 @@ void RGBLED::stepToRGB(float r, float g, float b, float stepSize) {
     else if (green > g) { setGreen(green - stepSize); }
     if      (blue  < b) { setBlue (blue  + stepSize); }
     else if (blue  > b) { setBlue (blue  - stepSize); }
-}
-
-// Step toward rgb value
-void RGBLED::stepToRGB(float r, float g, float b) {
-    stepToRGB(r, g, b, 1.0);
-}
-
-void RGBLED::setState(int state) {
-    current_state = state;
-}
-
-void RGBLED::powerOn() {
-    // Don't poweron again if we are already on
-    if (power_state == STATE_POWERON) return;
-
-    // Fade the light on
-    if (current_state == STATE_FADE) {
-        fade_init = true;
-    } else {
-        float oldRed = red;
-        float oldGreen = green;
-        float oldBlue = blue;
-
-        setRGB(0, 0, 0);
-
-        while (red != oldRed && green != oldGreen && blue != oldBlue) {
-            stepToRGB(oldRed, oldGreen, oldBlue, 0.5);
-            rgbOut();
-            delay(3);
-        }
-    }
-
-    // Set the proper power state
-    power_state = STATE_POWERON;
-}
-
-void RGBLED::powerOff() {
-    // Don't poweroff if we are already off
-    if (power_state == STATE_POWEROFF) return;
-
-    float oldRed = red;
-    float oldGreen = green;
-    float oldBlue = blue;
-
-    while (red != 0 && green != 0 && blue != 0) {
-        stepToRGB(0, 0, 0, 0.5);
-        rgbOut();
-        delay(3);
-    }
-
-    setRGB(oldRed, oldGreen, oldBlue);
-    rgbOff();
-
-    power_state = STATE_POWEROFF;
 }
 
 void RGBLED::rgbOut() {
@@ -192,5 +225,15 @@ void  RGBLED::setRGB(float r, float g, float b) {
 inline float RGBLED::boundcheck(float x) {
     if (x > 255.0) return 255.0;
     if (x < 0.0) return 0.0;
+    return x;
+}
+
+inline float RGBLED::lowerbound(float x, float bound) {
+    if (x <= bound) return bound;
+    return x;
+}
+
+inline float RGBLED::upperbound(float x, float bound) {
+    if (x >= bound) return bound;
     return x;
 }
