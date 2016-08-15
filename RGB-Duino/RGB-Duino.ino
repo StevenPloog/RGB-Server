@@ -49,7 +49,7 @@ void setup() {
     pinMode(PIN_TX, OUTPUT);
 
     softSerial.begin(9600);
-    Serial.begin(9600);
+    //Serial.begin(9600);
 
     in_message = false;
     complete_message = false;
@@ -150,19 +150,20 @@ void loop() {
             }
         }
 
+        /*
         Serial.print("MSG:");
         for (int i = 0; i < message_length; i++) {
             Serial.print(message[i]);
             Serial.print(',');
         }
         Serial.println();
-
         Serial.print("ARG:");
         for (int i = 0; i < MAX_ARGS; i++) {
             Serial.print(message_args[i]);
             Serial.print(',');
         }
         Serial.println();
+        */
     }
 
     strip.tick();
