@@ -16,9 +16,4 @@ def run_server():
         if msg[0] == MSG_START and len(msg) == 5 and msg[4] == MSG_END:
             rgb_args = str(msg[1]) + ',' + str(msg[2]) + ',' + str(msg[3]) + ','
             args_str = '1,' + '1,' + rgb_args
-            #call(['/var/www/mysite/uart', str(2+len(args_str)), args_str])
-            print(args_str)
-
-# rgb_args = str(r) + ',' + str(g) + ',' + str(b) + ','
-# args_str = '1,' + '1,' + rgb_args
-# call(['/var/www/mysite/uart', str(2+len(args_str)), args_str])
+            call(['/var/www/mysite/uart', str(2+len(args_str)), args_str])
